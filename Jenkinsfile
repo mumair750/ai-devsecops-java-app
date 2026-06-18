@@ -1,10 +1,6 @@
 pipeline {
     agent any
 
-    tools {
-        sonarScanner 'sonar-scanner'
-    }
-
     stages {
         stage('Checkout') {
             steps {
@@ -23,7 +19,7 @@ pipeline {
             steps {
                 withSonarQubeEnv('SonarQube') {
                     sh '''
-                    sonar-scanner \
+                    /var/jenkins_home/tools/hudson.plugins.sonar.SonarRunnerInstallation/sonar-scanner/bin/sonar-scanner \
                     -Dsonar.projectKey=ai-devsecops-java-app \
                     -Dsonar.projectName=ai-devsecops-java-app \
                     -Dsonar.sources=src/main/java \
