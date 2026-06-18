@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    tools {
+        sonarScanner 'sonar-scanner'
+    }
+
     stages {
         stage('Checkout') {
             steps {
@@ -12,6 +16,21 @@ pipeline {
             steps {
                 sh 'chmod +x mvnw'
                 sh './mvnw clean package'
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh '''
+                    sonar-scanner \
+                    -Dsonar.projectKey=ai-devsecops-java-app \
+                    -Dsonar.projectName=ai-devsecops-java-app \
+                    -Dsonar.sources=src/main/java \
+                    -Dsonar.tests=src/test/java \
+                    -Dsonar.java.binaries=target/classes
+                    '''
+                }
             }
         }
 
