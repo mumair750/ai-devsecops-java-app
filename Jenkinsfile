@@ -2,6 +2,7 @@ pipeline {
     agent any
 
     stages {
+
         stage('Checkout') {
             steps {
                 git branch: 'Main', url: 'https://github.com/mumair750/ai-devsecops-java-app.git'
@@ -19,6 +20,7 @@ pipeline {
             steps {
                 script {
                     def scannerHome = tool 'sonar-scanner'
+
                     withSonarQubeEnv('SonarQube') {
                         sh """
                         ${scannerHome}/bin/sonar-scanner \
@@ -36,6 +38,26 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 sh 'docker build -t ai-devsecops-java-app:1.0 .'
+            }
+        }
+
+        stage('Push Docker Image') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'dockerhub',
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASS'
+                    )
+                ]) {
+                    sh '''
+                    docker login -u $DOCKER_USER -p $DOCKER_PASS
+
+                    docker tag ai-devsecops-java-app:1.0 mumairask750/ai-devsecops-java-app:latest
+
+                    docker push mumairask750/ai-devsecops-java-app:latest
+                    '''
+                }
             }
         }
     }
