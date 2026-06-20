@@ -122,7 +122,7 @@ pipeline {
             steps {
                 sh '''
                 if [ -f policy/conftest-policy.rego ] && [ -f kubernetes/deployment.yaml ]; then
-                    echo "🔍 Running Conftest policy checks..."
+                    echo "Running Conftest policy checks..."
                     conftest test kubernetes/deployment.yaml \
                         --policy policy/conftest-policy.rego \
                         --output table || echo "Conftest violations found (allowed to continue)"
@@ -144,22 +144,43 @@ pipeline {
             }
         }
 
-        stage('Push Docker Image') {
+        stage('Push to Azure Container Registry (ACR)') {
             steps {
-                withCredentials([
-                    usernamePassword(
-                        credentialsId: 'dockerhub',
-                        usernameVariable: 'DOCKER_USER',
-                        passwordVariable: 'DOCKER_PASS'
-                    )
-                ]) {
-                    sh '''
-                    docker login -u $DOCKER_USER -p $DOCKER_PASS
-
-                    docker tag ai-devsecops-java-app:1.0 mumairask750/ai-devsecops-java-app:latest
-
-                    docker push mumairask750/ai-devsecops-java-app:latest
-                    '''
+                script {
+                    env.ACR_NAME = 'devsecopsacr1781958109'  
+                    env.ACR_REGISTRY = "${env.ACR_NAME}.azurecr.io"
+                    env.IMAGE_NAME = 'ai-devsecops-java-app'
+                    
+                    withCredentials([
+                        usernamePassword(
+                            credentialsId: 'azure-acr-credentials',
+                            usernameVariable: 'ACR_USERNAME',
+                            passwordVariable: 'ACR_PASSWORD'
+                        )
+                    ]) {
+                        sh '''
+                        echo "Logging in to ACR..."
+                        echo $ACR_PASSWORD | docker login $ACR_REGISTRY -u $ACR_USERNAME --password-stdin
+                        
+                        echo "Tagging image for ACR..."
+                        docker tag ai-devsecops-java-app:1.0 $ACR_REGISTRY/$IMAGE_NAME:latest
+                        docker tag ai-devsecops-java-app:1.0 $ACR_REGISTRY/$IMAGE_NAME:${BUILD_NUMBER}
+                        
+                        echo "Pushing image to ACR..."
+                        docker push $ACR_REGISTRY/$IMAGE_NAME:latest
+                        docker push $ACR_REGISTRY/$IMAGE_NAME:${BUILD_NUMBER}
+                        
+                        echo "Image pushed to ACR: $ACR_REGISTRY/$IMAGE_NAME:${BUILD_NUMBER}"
+                        '''
+                    }
+                }
+            }
+            post {
+                success {
+                    echo "ACR push successful!"
+                }
+                failure {
+                    echo "ACR push failed!"
                 }
             }
         }
