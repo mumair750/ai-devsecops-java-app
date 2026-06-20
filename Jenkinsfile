@@ -16,6 +16,24 @@ pipeline {
             }
         }
 
+        stage('Unit Tests & Coverage') {
+            steps {
+                 sh './mvnw test'
+            }
+    
+            post {
+                 always {
+                     junit 'target/surefire-reports/*.xml'
+                     jacoco(
+                            execPattern: 'target/jacoco.exec',
+                            classPattern: 'target/classes',
+                            sourcePattern: 'src/main/java',
+                            inclusionPattern: 'com/umair/*'
+            )
+        }
+    }
+}
+
         stage('SonarQube Analysis') {
             steps {
                 script {
