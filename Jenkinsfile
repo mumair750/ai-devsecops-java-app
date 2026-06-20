@@ -80,6 +80,23 @@ pipeline {
             }
         }
 
+        stage('Trivy Security Scan') {
+            steps {
+                sh '''
+                # Scan Dockerfile for misconfigurations
+                trivy config --severity HIGH,CRITICAL Dockerfile || true
+                
+                # Scan container image for vulnerabilities
+                trivy image --severity HIGH,CRITICAL ai-devsecops-java-app:1.0 || true
+                '''
+            }
+            post {
+                always {
+                    echo "Trivy scan completed"
+                }
+            }
+        }
+
         stage('Build Docker Image') {
             steps {
                 sh 'docker build -t ai-devsecops-java-app:1.0 .'
