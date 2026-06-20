@@ -9,30 +9,24 @@ pipeline {
             }
         }
 
-        stage('Build JAR') {
+        stage('Build JAR & Test') {
             steps {
                 sh 'chmod +x mvnw'
-                sh './mvnw clean package'
+                sh './mvnw clean package'  
             }
-        }
-
-        stage('Unit Tests & Coverage') {
-            steps {
-                 sh './mvnw test'
-            }
-    
             post {
-                 always {
-                     junit 'target/surefire-reports/*.xml'
-                     jacoco(
-                            execPattern: 'target/jacoco.exec',
-                            classPattern: 'target/classes',
-                            sourcePattern: 'src/main/java',
-                            inclusionPattern: 'com/umair/*'
-            )
+                always {
+                    junit 'target/surefire-reports/*.xml'
+                    
+                    jacoco(
+                        execPattern: 'target/jacoco.exec',
+                        classPattern: 'target/classes',
+                        sourcePattern: 'src/main/java',
+                        inclusionPattern: 'com/umair/*'
+                    )
+                }
+            }
         }
-    }
-}
 
         stage('SonarQube Analysis') {
             steps {
