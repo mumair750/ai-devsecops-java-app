@@ -49,24 +49,15 @@ pipeline {
 
         stage('OWASP Dependency Check') {
              steps {
-                dependencyCheck(
-                installation: 'dependency-check', 
-                arguments: '--scan . --format HTML --out dependency-check-report'
-            )
-        }
-        
+                sh './mvnw org.owasp:dependency-check-maven:check'
+            }
              post {
-                 always {
+                always {
                     publishHTML([
-                    reportDir: 'dependency-check-report',
+                    reportDir: 'target/dependency-check-report',
                     reportFiles: 'dependency-check-report.html',
                     reportName: 'OWASP Dependency Check Report'
-            ]   )
-            
-            dependencyCheckPublisher(
-                pattern: 'dependency-check-report/dependency-check-report.xml'
-            )
-            
+            ])
         }
     }
 }
