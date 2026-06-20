@@ -62,12 +62,6 @@ pipeline {
             }
             post {
                 always {
-                    publishHTML([
-                        reportDir: 'target/dependency-check-report',
-                        reportFiles: 'dependency-check-report.html',
-                        reportName: 'OWASP Dependency Check Report'
-                    ])
-                    
                     script {
                         if (fileExists('target/dependency-check-report/dependency-check-report.html')) {
                             publishHTML([
@@ -75,6 +69,8 @@ pipeline {
                                 reportFiles: 'dependency-check-report.html',
                                 reportName: 'OWASP Security Report'
                             ])
+                        } else {
+                            echo "OWASP report not generated - skipping publish"
                         }
                     }
                 }
