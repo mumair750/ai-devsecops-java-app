@@ -97,6 +97,27 @@ pipeline {
             }
         }
 
+        stage('OPA Policy Check') {
+            steps {
+                sh '''
+                if [ -f policy/security.rego ] && [ -f kubernetes/deployment.yaml ]; then
+                    echo "Running OPA policy checks..."
+                    opa eval --fail \
+                        --data policy/security.rego \
+                        --input kubernetes/deployment.yaml \
+                        "data.kubernetes.deny" || echo "OPA violations found (allowed to continue)"
+                else
+                    echo "OPA policy or manifest not found - skipping"
+                fi
+                '''
+            }
+            post {
+                always {
+                    echo "OPA policy check completed"
+                }
+            }
+        }
+
         stage('Build Docker Image') {
             steps {
                 sh 'docker build -t ai-devsecops-java-app:1.0 .'
