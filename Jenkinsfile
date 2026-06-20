@@ -47,6 +47,30 @@ pipeline {
             }
         }
 
+        stage('OWASP Dependency Check') {
+             steps {
+                dependencyCheck(
+                installation: 'dependency-check', 
+                arguments: '--scan . --format HTML --out dependency-check-report'
+            )
+        }
+        
+             post {
+                 always {
+                    publishHTML([
+                    reportDir: 'dependency-check-report',
+                    reportFiles: 'dependency-check-report.html',
+                    reportName: 'OWASP Dependency Check Report'
+            ]   )
+            
+            dependencyCheckPublisher(
+                pattern: 'dependency-check-report/dependency-check-report.xml'
+            )
+            
+        }
+    }
+}
+
         stage('Build Docker Image') {
             steps {
                 sh 'docker build -t ai-devsecops-java-app:1.0 .'
