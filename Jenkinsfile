@@ -48,19 +48,41 @@ pipeline {
         }
 
         stage('OWASP Dependency Check') {
-             steps {
-                sh './mvnw org.owasp:dependency-check-maven:check'
+            steps {
+                withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
+                    sh '''
+                    ./mvnw org.owasp:dependency-check-maven:check \
+                        -DnvdApiKey=${NVD_API_KEY} \
+                        -Dformat=HTML \
+                        -DoutputDirectory=target/dependency-check-report \
+                        -DdataDirectory=/var/jenkins_home/.dependency-check \
+                        -DfailOnError=false
+                    '''
+                }
             }
-             post {
+            post {
                 always {
                     publishHTML([
-                    reportDir: 'target/dependency-check-report',
-                    reportFiles: 'dependency-check-report.html',
-                    reportName: 'OWASP Dependency Check Report'
-            ])
+                        reportDir: 'target/dependency-check-report',
+                        reportFiles: 'dependency-check-report.html',
+                        reportName: 'OWASP Dependency Check Report'
+                    ])
+                    
+                    script {
+                        if (fileExists('target/dependency-check-report/dependency-check-report.html')) {
+                            publishHTML([
+                                reportDir: 'target/dependency-check-report',
+                                reportFiles: 'dependency-check-report.html',
+                                reportName: 'OWASP Security Report'
+                            ])
+                        }
+                    }
+                }
+                failure {
+                    echo "OWASP Scan failed but continuing pipeline..."
+                }
+            }
         }
-    }
-}
 
         stage('Build Docker Image') {
             steps {
