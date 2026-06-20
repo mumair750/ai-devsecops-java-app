@@ -118,6 +118,26 @@ pipeline {
             }
         }
 
+        stage('Conftest K8s Validation') {
+            steps {
+                sh '''
+                if [ -f policy/conftest-policy.rego ] && [ -f kubernetes/deployment.yaml ]; then
+                    echo "🔍 Running Conftest policy checks..."
+                    conftest test kubernetes/deployment.yaml \
+                        --policy policy/conftest-policy.rego \
+                        --output table || echo "Conftest violations found (allowed to continue)"
+                else
+                    echo "Conftest policy or manifest not found - skipping"
+                fi
+                '''
+            }
+            post {
+                always {
+                    echo "Conftest validation completed"
+                }
+            }
+        }
+
         stage('Build Docker Image') {
             steps {
                 sh 'docker build -t ai-devsecops-java-app:1.0 .'
