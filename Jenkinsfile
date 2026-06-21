@@ -66,7 +66,6 @@ pipeline {
                 grype sbom:sbom.json --output json > grype-report.json
                 grype sbom:sbom.json --output table > grype-report.txt
                 grype dir:. --output json > grype-fs-report.json
-                grype sbom:sbom.json --severity LOW,MEDIUM,HIGH,CRITICAL --output json > grype-all-severities.json
                 grype sbom:sbom.json --only-fixed --output table > grype-fixed-only.txt
                 grype sbom:sbom.json --output html > grype-report.html
                 
@@ -119,14 +118,6 @@ pipeline {
                         reportDir: '.',
                         reportFiles: 'grype-fs-report.json',
                         reportName: 'Grype Filesystem Scan',
-                        allowMissing: true,
-                        alwaysLinkToLastBuild: true,
-                        keepAll: true
-                    ])
-                    publishHTML([
-                        reportDir: '.',
-                        reportFiles: 'grype-all-severities.json',
-                        reportName: 'Grype All Severities',
                         allowMissing: true,
                         alwaysLinkToLastBuild: true,
                         keepAll: true
