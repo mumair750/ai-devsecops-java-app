@@ -54,55 +54,23 @@ pipeline {
                 echo "SYFT - SBOM Generation (All Formats)"
                 echo "=========================================="
                 
-                # 1. Generate SBOM in different formats
                 syft dir:. -o json > sbom.json
                 syft dir:. -o cyclonedx-json > sbom-cyclonedx.json
                 syft dir:. -o spdx-json > sbom-spdx.json
                 syft dir:. -o table > sbom-table.txt
                 
-                echo "SBOMs generated:"
-                echo "   - JSON: sbom.json"
-                echo "   - CycloneDX: sbom-cyclonedx.json"
-                echo "   - SPDX: sbom-spdx.json"
-                echo "   - Table: sbom-table.txt"
-                
                 echo "=========================================="
-                echo "GRYPE - Vulnerability Scanning (All Methods)"
+                echo "GRYPE - Vulnerability Scanning"
                 echo "=========================================="
                 
-                # 2. Scan SBOM for vulnerabilities
                 grype sbom:sbom.json --output json > grype-report.json
                 grype sbom:sbom.json --output table > grype-report.txt
-                
-                # 3. Direct filesystem scan
                 grype dir:. --output json > grype-fs-report.json
-                
-                # 4. Scan with specific severity filters
                 grype sbom:sbom.json --severity LOW,MEDIUM,HIGH,CRITICAL --output json > grype-all-severities.json
-                
-                # 5. Show only fixed vulnerabilities
                 grype sbom:sbom.json --only-fixed --output table > grype-fixed-only.txt
-                
-                # 6. Generate HTML report
                 grype sbom:sbom.json --output html > grype-report.html
                 
-                echo "=========================================="
-                echo "Summary Reports Generated:"
-                echo "=========================================="
-                echo "SBOM Reports:"
-                echo "   - sbom.json (JSON)"
-                echo "   - sbom-cyclonedx.json (CycloneDX)"
-                echo "   - sbom-spdx.json (SPDX)"
-                echo ""
-                echo "Vulnerability Reports:"
-                echo "   - grype-report.json (JSON)"
-                echo "   - grype-fs-report.json (Filesystem scan)"
-                echo "   - grype-all-severities.json (LOW to CRITICAL)"
-                echo "   - grype-report.html (HTML format)"
-                echo "   - grype-fixed-only.txt (Fixed vulnerabilities only)"
-                echo ""
-                echo "Total Vulnerabilities Found:"
-                grype sbom:sbom.json --output json | jq '.matches | length' 2>/dev/null || echo "Check grype-report.json for count"
+                echo "Reports generated successfully!"
                 '''
             }
             post {
@@ -110,37 +78,58 @@ pipeline {
                     publishHTML([
                         reportDir: '.',
                         reportFiles: 'sbom.json',
-                        reportName: 'SBOM (JSON)'
+                        reportName: 'SBOM (JSON)',
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true
                     ])
                     publishHTML([
                         reportDir: '.',
                         reportFiles: 'sbom-cyclonedx.json',
-                        reportName: 'SBOM (CycloneDX)'
+                        reportName: 'SBOM (CycloneDX)',
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true
                     ])
                     publishHTML([
                         reportDir: '.',
                         reportFiles: 'sbom-spdx.json',
-                        reportName: 'SBOM (SPDX)'
+                        reportName: 'SBOM (SPDX)',
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true
                     ])
                     publishHTML([
                         reportDir: '.',
                         reportFiles: 'grype-report.json',
-                        reportName: 'Grype Vulnerability Report (JSON)'
+                        reportName: 'Grype Report (JSON)',
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true
                     ])
                     publishHTML([
                         reportDir: '.',
                         reportFiles: 'grype-report.html',
-                        reportName: 'Grype Vulnerability Report (HTML)'
+                        reportName: 'Grype Report (HTML)',
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true
                     ])
                     publishHTML([
                         reportDir: '.',
                         reportFiles: 'grype-fs-report.json',
-                        reportName: 'Grype Filesystem Scan'
+                        reportName: 'Grype Filesystem Scan',
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true
                     ])
                     publishHTML([
                         reportDir: '.',
                         reportFiles: 'grype-all-severities.json',
-                        reportName: 'Grype All Severities'
+                        reportName: 'Grype All Severities',
+                        allowMissing: true,
+                        alwaysLinkToLastBuild: true,
+                        keepAll: true
                     ])
                 }
             }
