@@ -56,6 +56,8 @@ pipeline {
                         -Dformat=HTML \
                         -DoutputDirectory=target/dependency-check-report \
                         -DdataDirectory=/var/jenkins_home/.dependency-check \
+                        -DnvdValidForHours=720 \
+                        -DskipUpdate=true \
                         -DfailOnError=false
                     '''
                 }
