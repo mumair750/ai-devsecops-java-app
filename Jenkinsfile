@@ -50,16 +50,20 @@ pipeline {
         stage('OWASP Dependency Check') {
             steps {
                 withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
-                    sh '''
-                    ./mvnw org.owasp:dependency-check-maven:check \
-                        -DnvdApiKey=${NVD_API_KEY} \
-                        -Dformat=HTML \
-                        -DoutputDirectory=target/dependency-check-report \
-                        -DdataDirectory=/var/jenkins_home/.dependency-check \
-                        -DnvdValidForHours=720 \
-                        -DskipUpdate=true \
-                        -DfailOnError=false
-                    '''
+                    timeout(time: 10, unit: 'MINUTES') {
+                        catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                            sh '''
+                            ./mvnw org.owasp:dependency-check-maven:check \
+                                -DnvdApiKey=${NVD_API_KEY} \
+                                -Dformat=HTML \
+                                -DoutputDirectory=target/dependency-check-report \
+                                -DdataDirectory=/var/jenkins_home/.dependency-check \
+                                -DnvdValidForHours=720 \
+                                -DnvdApiDelay=4000 \
+                                -DfailOnError=false
+                            '''
+                        }
+                    }
                 }
             }
             post {
@@ -72,12 +76,15 @@ pipeline {
                                 reportName: 'OWASP Security Report'
                             ])
                         } else {
-                            echo "OWASP report not generated - skipping publish"
+                            echo "OWASP report not generated - likely an NVD API issue (check logs above for 503s/timeouts). Pipeline continuing."
                         }
                     }
                 }
                 failure {
                     echo "OWASP Scan failed but continuing pipeline..."
+                }
+                unstable {
+                    echo "OWASP Scan hit a timeout or NVD API issue - stage marked UNSTABLE, pipeline continues."
                 }
             }
         }
