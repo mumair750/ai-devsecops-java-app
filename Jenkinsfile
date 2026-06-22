@@ -226,8 +226,8 @@ pipeline {
                         )
                     ]) {
                         sh '''
-                        echo "Logging in to ACR..."
-                        echo $ACR_PASSWORD | docker login $ACR_REGISTRY -u $ACR_USERNAME --password-stdin
+                        echo "Logging in to ACR using Azure CLI..."
+                        az acr login --name $ACR_NAME
                         
                         echo "Tagging image for ACR..."
                         docker tag ai-devsecops-java-app:1.0 $ACR_REGISTRY/$IMAGE_NAME:latest
