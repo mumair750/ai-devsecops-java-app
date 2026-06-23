@@ -12,12 +12,11 @@ pipeline {
         stage('Build JAR & Test') {
             steps {
                 sh 'chmod +x mvnw'
-                sh './mvnw clean package'  
+                sh './mvnw clean package'
             }
             post {
                 always {
                     junit 'target/surefire-reports/*.xml'
-                    
                     jacoco(
                         execPattern: 'target/jacoco.exec',
                         classPattern: 'target/classes',
@@ -32,7 +31,6 @@ pipeline {
             steps {
                 script {
                     def scannerHome = tool 'sonar-scanner'
-
                     withSonarQubeEnv('SonarQube') {
                         sh """
                         ${scannerHome}/bin/sonar-scanner \
@@ -53,16 +51,16 @@ pipeline {
                 echo "=========================================="
                 echo "SYFT - SBOM Generation (All Formats)"
                 echo "=========================================="
-                
+
                 syft dir:. -o json > sbom.json || true
                 syft dir:. -o cyclonedx-json > sbom-cyclonedx.json || true
                 syft dir:. -o spdx-json > sbom-spdx.json || true
                 syft dir:. -o table > sbom-table.txt || true
-                
+
                 echo "=========================================="
                 echo "GRYPE - Vulnerability Scanning"
                 echo "=========================================="
-                
+
                 grype sbom:sbom.json --output json > grype-report.json || true
                 grype sbom:sbom.json --output table > grype-report.txt || true
                 grype dir:. --output json > grype-fs-report.json || true
@@ -74,60 +72,18 @@ pipeline {
                     grype sbom:sbom.json --output table
                     echo "</pre></body></html>"
                 } > grype-report.html || true
-                
+
                 echo "Reports generated successfully!"
                 '''
             }
             post {
                 always {
-                    publishHTML([
-                        reportDir: '.',
-                        reportFiles: 'sbom.json',
-                        reportName: 'SBOM (JSON)',
-                        allowMissing: true,
-                        alwaysLinkToLastBuild: true,
-                        keepAll: true
-                    ])
-                    publishHTML([
-                        reportDir: '.',
-                        reportFiles: 'sbom-cyclonedx.json',
-                        reportName: 'SBOM (CycloneDX)',
-                        allowMissing: true,
-                        alwaysLinkToLastBuild: true,
-                        keepAll: true
-                    ])
-                    publishHTML([
-                        reportDir: '.',
-                        reportFiles: 'sbom-spdx.json',
-                        reportName: 'SBOM (SPDX)',
-                        allowMissing: true,
-                        alwaysLinkToLastBuild: true,
-                        keepAll: true
-                    ])
-                    publishHTML([
-                        reportDir: '.',
-                        reportFiles: 'grype-report.json',
-                        reportName: 'Grype Report (JSON)',
-                        allowMissing: true,
-                        alwaysLinkToLastBuild: true,
-                        keepAll: true
-                    ])
-                    publishHTML([
-                        reportDir: '.',
-                        reportFiles: 'grype-report.html',
-                        reportName: 'Grype Report (HTML)',
-                        allowMissing: true,
-                        alwaysLinkToLastBuild: true,
-                        keepAll: true
-                    ])
-                    publishHTML([
-                        reportDir: '.',
-                        reportFiles: 'grype-fs-report.json',
-                        reportName: 'Grype Filesystem Scan',
-                        allowMissing: true,
-                        alwaysLinkToLastBuild: true,
-                        keepAll: true
-                    ])
+                    publishHTML([reportDir: '.', reportFiles: 'sbom.json',            reportName: 'SBOM (JSON)',           allowMissing: true, alwaysLinkToLastBuild: true, keepAll: true])
+                    publishHTML([reportDir: '.', reportFiles: 'sbom-cyclonedx.json',  reportName: 'SBOM (CycloneDX)',      allowMissing: true, alwaysLinkToLastBuild: true, keepAll: true])
+                    publishHTML([reportDir: '.', reportFiles: 'sbom-spdx.json',       reportName: 'SBOM (SPDX)',           allowMissing: true, alwaysLinkToLastBuild: true, keepAll: true])
+                    publishHTML([reportDir: '.', reportFiles: 'grype-report.json',    reportName: 'Grype Report (JSON)',   allowMissing: true, alwaysLinkToLastBuild: true, keepAll: true])
+                    publishHTML([reportDir: '.', reportFiles: 'grype-report.html',    reportName: 'Grype Report (HTML)',   allowMissing: true, alwaysLinkToLastBuild: true, keepAll: true])
+                    publishHTML([reportDir: '.', reportFiles: 'grype-fs-report.json', reportName: 'Grype Filesystem Scan', allowMissing: true, alwaysLinkToLastBuild: true, keepAll: true])
                 }
             }
         }
@@ -135,10 +91,7 @@ pipeline {
         stage('Trivy Security Scan') {
             steps {
                 sh '''
-                # Scan Dockerfile for misconfigurations
                 trivy config --severity HIGH,CRITICAL Dockerfile || true
-                
-                # Scan container image with timeout
                 trivy image --severity HIGH,CRITICAL --timeout 15m ai-devsecops-java-app:1.0 || true
                 '''
             }
@@ -203,8 +156,7 @@ pipeline {
                     export KUBECONFIG=$KUBECONFIG
 
                     echo "--- Falco Pod Status ---"
-                    kubectl get pods -n falco \
-                        --request-timeout=15s
+                    kubectl get pods -n falco --request-timeout=15s
 
                     echo "--- Falco Security Events (last 50 lines) ---"
                     kubectl logs -n falco \
@@ -216,8 +168,7 @@ pipeline {
                         || echo "No critical Falco security events found"
 
                     echo "--- Pod Details ---"
-                    kubectl get pods -n falco -o wide \
-                        --request-timeout=10s
+                    kubectl get pods -n falco -o wide --request-timeout=10s
 
                     echo "=========================================="
                     echo "Falco check completed successfully"
@@ -226,7 +177,9 @@ pipeline {
                 }
             }
             post {
-                always { echo "Falco runtime check completed" }
+                always {
+                    echo "Falco runtime check completed"
+                }
             }
         }
 
@@ -239,10 +192,10 @@ pipeline {
         stage('Push to Azure Container Registry (ACR)') {
             steps {
                 script {
-                    env.ACR_NAME = 'devsecopsacr1781958109'  
+                    env.ACR_NAME     = 'devsecopsacr1781958109'
                     env.ACR_REGISTRY = "${env.ACR_NAME}.azurecr.io"
-                    env.IMAGE_NAME = 'ai-devsecops-java-app'
-                    
+                    env.IMAGE_NAME   = 'ai-devsecops-java-app'
+
                     withCredentials([
                         usernamePassword(
                             credentialsId: 'azure-acr-credentials',
@@ -253,51 +206,44 @@ pipeline {
                         sh '''
                         echo "Logging in to ACR..."
                         echo $ACR_PASSWORD | docker login $ACR_REGISTRY -u $ACR_USERNAME --password-stdin
-                        
+
                         echo "Tagging image for ACR..."
                         docker tag ai-devsecops-java-app:1.0 $ACR_REGISTRY/$IMAGE_NAME:latest
                         docker tag ai-devsecops-java-app:1.0 $ACR_REGISTRY/$IMAGE_NAME:${BUILD_NUMBER}
-                        
+
                         echo "Pushing image to ACR..."
                         docker push $ACR_REGISTRY/$IMAGE_NAME:latest
                         docker push $ACR_REGISTRY/$IMAGE_NAME:${BUILD_NUMBER}
-                        
+
                         echo "Image pushed to ACR: $ACR_REGISTRY/$IMAGE_NAME:${BUILD_NUMBER}"
                         '''
                     }
                 }
             }
             post {
-                success {
-                    echo "ACR push successful!"
-                }
-                failure {
-                    echo "ACR push failed!"
-                }
+                success { echo "ACR push successful!" }
+                failure { echo "ACR push failed!" }
             }
         }
     }
 
-
-    // SLACK NOTIFICATIONS - POST SECTION
-
     post {
         success {
             withCredentials([string(credentialsId: 'slack-webhook', variable: 'SLACK_WEBHOOK')]) {
-                sh '''
-                curl -X POST -H 'Content-type: application/json' \
-                    --data "{\"text\":\" *PIPELINE SUCCESSFUL!*\\n• Job: ${JOB_NAME}\\n• Build: #${BUILD_NUMBER}\\n• Image Tag: ${BUILD_NUMBER}\\n• Deployed to: AKS Green\\n• URL: ${BUILD_URL}\"}" \
-                    $SLACK_WEBHOOK
-                '''
+                script {
+                    def payload = """{"text":"*PIPELINE SUCCESSFUL!*\\n• Job: ${env.JOB_NAME}\\n• Build: #${env.BUILD_NUMBER}\\n• Image Tag: ${env.BUILD_NUMBER}\\n• Deployed to: AKS Green\\n• URL: ${env.BUILD_URL}"}"""
+                    writeFile file: 'slack-payload.json', text: payload
+                    sh 'curl -s -X POST -H "Content-type: application/json" -d @slack-payload.json "$SLACK_WEBHOOK"'
+                }
             }
         }
         failure {
             withCredentials([string(credentialsId: 'slack-webhook', variable: 'SLACK_WEBHOOK')]) {
-                sh '''
-                curl -X POST -H 'Content-type: application/json' \
-                    --data "{\"text\":\" *PIPELINE FAILED!*\\n• Job: ${JOB_NAME}\\n• Build: #${BUILD_NUMBER}\\n• Stage: ${STAGE_NAME}\\n• URL: ${BUILD_URL}\"}" \
-                    $SLACK_WEBHOOK
-                '''
+                script {
+                    def payload = """{"text":"*PIPELINE FAILED!*\\n• Job: ${env.JOB_NAME}\\n• Build: #${env.BUILD_NUMBER}\\n• URL: ${env.BUILD_URL}"}"""
+                    writeFile file: 'slack-payload.json', text: payload
+                    sh 'curl -s -X POST -H "Content-type: application/json" -d @slack-payload.json "$SLACK_WEBHOOK"'
+                }
             }
         }
     }
