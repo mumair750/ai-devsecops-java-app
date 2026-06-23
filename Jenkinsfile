@@ -277,21 +277,26 @@ pipeline {
             }
         }
     }
+    // SLACK NOTIFICATIONS - POST SECTION
 
     post {
         success {
-            sh '''
-            curl -X POST -H 'Content-type: application/json' \
-                --data '{"text":"*PIPELINE SUCCESSFUL!*\\n• Job: '${JOB_NAME}'\\n• Build: #'${BUILD_NUMBER}'\\n• Image Tag: '${BUILD_NUMBER}'\\n• Deployed to: AKS Green\\n• URL: '${BUILD_URL}'"}' \
-                'https://hooks.slack.com/services/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'
-            '''
+            withCredentials([string(credentialsId: 'slack-webhook', variable: 'SLACK_WEBHOOK')]) {
+                sh '''
+                curl -X POST -H 'Content-type: application/json' \
+                    --data '{"text":"*PIPELINE SUCCESSFUL!*\\n• Job: '${JOB_NAME}'\\n• Build: #'${BUILD_NUMBER}'\\n• Image Tag: '${BUILD_NUMBER}'\\n• Deployed to: AKS Green\\n• URL: '${BUILD_URL}'"}' \
+                    $SLACK_WEBHOOK
+                '''
+            }
         }
         failure {
-            sh '''
-            curl -X POST -H 'Content-type: application/json' \
-                --data '{"text":"*PIPELINE FAILED!*\\n• Job: '${JOB_NAME}'\\n• Build: #'${BUILD_NUMBER}'\\n• Stage: '${STAGE_NAME}'\\n• URL: '${BUILD_URL}'"}' \
-                'https://hooks.slack.com/services/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'
-            '''
+            withCredentials([string(credentialsId: 'slack-webhook', variable: 'SLACK_WEBHOOK')]) {
+                sh '''
+                curl -X POST -H 'Content-type: application/json' \
+                    --data '{"text":"*PIPELINE FAILED!*\\n• Job: '${JOB_NAME}'\\n• Build: #'${BUILD_NUMBER}'\\n• Stage: '${STAGE_NAME}'\\n• URL: '${BUILD_URL}'"}' \
+                    $SLACK_WEBHOOK
+                '''
+            }
         }
     }
 }
