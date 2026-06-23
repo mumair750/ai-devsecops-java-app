@@ -138,8 +138,8 @@ pipeline {
                 # Scan Dockerfile for misconfigurations
                 trivy config --severity HIGH,CRITICAL Dockerfile || true
                 
-                # Scan container image for vulnerabilities
-                trivy image --severity HIGH,CRITICAL ai-devsecops-java-app:1.0 || true
+                # Scan container image with timeout
+                trivy image --severity HIGH,CRITICAL --timeout 15m ai-devsecops-java-app:1.0 || true
                 '''
             }
             post {
@@ -192,16 +192,41 @@ pipeline {
 
         stage('Falco Runtime Security Check') {
             steps {
-                sh '''
-                echo "Checking Falco for security events..."
-                kubectl get pods -n falco || echo "Falco namespace/pods not found (allowed to continue)"
-                kubectl logs -n falco deployment/falco --tail=20 || echo "No critical events found"
-                '''
+                withCredentials([
+                    file(credentialsId: 'kubeconfig-file', variable: 'KUBECONFIG')
+                ]) {
+                    sh '''
+                    echo "=========================================="
+                    echo "Falco Runtime Security Check"
+                    echo "=========================================="
+
+                    export KUBECONFIG=$KUBECONFIG
+
+                    echo "--- Falco Pod Status ---"
+                    kubectl get pods -n falco \
+                        --request-timeout=15s
+
+                    echo "--- Falco Security Events (last 50 lines) ---"
+                    kubectl logs -n falco \
+                        -l app.kubernetes.io/name=falco \
+                        --tail=50 \
+                        --request-timeout=20s 2>/dev/null \
+                        | grep -E "(Warning|Critical|Emergency|Error)" \
+                        | head -30 \
+                        || echo "No critical Falco security events found"
+
+                    echo "--- Pod Details ---"
+                    kubectl get pods -n falco -o wide \
+                        --request-timeout=10s
+
+                    echo "=========================================="
+                    echo "Falco check completed successfully"
+                    echo "=========================================="
+                    '''
+                }
             }
             post {
-                always {
-                    echo "Falco runtime check completed"
-                }
+                always { echo "Falco runtime check completed" }
             }
         }
 
@@ -226,8 +251,8 @@ pipeline {
                         )
                     ]) {
                         sh '''
-                        echo "Logging in to ACR using Azure CLI..."
-                        az acr login --name $ACR_NAME
+                        echo "Logging in to ACR..."
+                        echo $ACR_PASSWORD | docker login $ACR_REGISTRY -u $ACR_USERNAME --password-stdin
                         
                         echo "Tagging image for ACR..."
                         docker tag ai-devsecops-java-app:1.0 $ACR_REGISTRY/$IMAGE_NAME:latest
